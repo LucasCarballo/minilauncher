@@ -1,0 +1,39 @@
+# MiniLauncher — EditorConfig
+# Enforces consistent code style across all editors and environments.
+# Matches ktlint default rules (AGENTS.md: "ktlint with default rules").
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+# ktlint: no semicolons, trailing commas, wildcard import ban
+# These are enforced by ktlint at build time, not here.
+
+[*.xml]
+indent_style = space
+indent_size = 4
+
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.properties]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab
