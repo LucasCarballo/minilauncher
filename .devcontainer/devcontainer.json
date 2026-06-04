@@ -35,6 +35,21 @@
   "remoteUser": "dev",
   "containerEnv": {
     "ANDROID_HOME": "/opt/android-sdk",
-    "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64"
-  }
+    "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
+    "DISPLAY": ":99"
+  },
+  "runArgs": [
+    "--device=/dev/kvm"
+  ],
+  "portsAttributes": {
+    "6080": {
+      "label": "noVNC (Emulator Browser)",
+      "onAutoForward": "openBrowser"
+    },
+    "5900": {
+      "label": "VNC (Emulator Display)",
+      "onAutoForward": "notify"
+    }
+  },
+  "forwardPorts": [6080, 5900]
 }
