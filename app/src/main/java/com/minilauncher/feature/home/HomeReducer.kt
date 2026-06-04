@@ -80,6 +80,8 @@ object HomeReducer {
 
             is HomeIntent.AppInfoClicked -> state // Side effect handled in Store
 
+            is HomeIntent.TimeFormatLoaded -> state.copy(timeFormat = intent.format)
+
             is HomeIntent.TimeUpdated -> state.copy(
                 greeting = intent.greeting,
                 date = intent.date,
@@ -89,6 +91,8 @@ object HomeReducer {
             is HomeIntent.UserNameLoaded -> state.copy(
                 userName = intent.name,
             )
+
+            is HomeIntent.OpenSettings -> state // Side effect handled in Store
 
             is HomeIntent.RetryClicked -> state.copy(isLoading = true, error = null)
         }

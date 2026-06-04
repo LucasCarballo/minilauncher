@@ -1,5 +1,7 @@
 package com.minilauncher.feature.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -87,8 +88,7 @@ fun HomeScreen(
                     }
                 }
             }
-            .padding(start = Spacing.md, top = Spacing.md)
-            .statusBarsPadding(),
+            .padding(start = Spacing.md, top = Spacing.md),
     ) {
         when {
             state.isLoading -> {
@@ -107,6 +107,7 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeContent(
     state: HomeUiState,
@@ -115,7 +116,7 @@ private fun HomeContent(
     var contextMenuApp by remember { mutableStateOf<AppDisplayModel?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Greeting
+        // Greeting — long-press to open settings
         val greetingText = if (state.userName.isNotBlank()) {
             "${state.greeting}, ${state.userName}"
         } else {
@@ -125,6 +126,10 @@ private fun HomeContent(
             text = greetingText,
             style = MaterialTheme.typography.headlineMedium,
             color = TextPrimary,
+            modifier = Modifier.combinedClickable(
+                onClick = {},
+                onLongClick = { onIntent(HomeIntent.OpenSettings) },
+            ),
         )
 
         Spacer(modifier = Modifier.height(Spacing.xs))

@@ -16,6 +16,7 @@ import androidx.lifecycle.flowWithLifecycle
 @Composable
 fun HomeRoute(
     onSwipeUp: () -> Unit,
+    onOpenSettings: () -> Unit,
     onLaunchApp: (packageName: String, activityName: String) -> Unit,
     viewModel: HomeStore = hiltViewModel(),
 ) {
@@ -36,6 +37,7 @@ fun HomeRoute(
                         }
                         context.startActivity(intent)
                     }
+                    is HomeEffect.NavigateToSettings -> onOpenSettings()
                     is HomeEffect.ShowToast -> { /* TODO: Toast */ }
                 }
             }

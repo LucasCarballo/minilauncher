@@ -37,6 +37,7 @@ class HomeStore @Inject constructor(
         startTimeUpdates()
         observeUserName()
         observePinnedApps()
+        observeTimeFormat()
     }
 
     fun send(intent: HomeIntent) {
@@ -70,6 +71,9 @@ class HomeStore @Inject constructor(
                     launcherPrefs.setPinnedApps(currentPins - intent.packageName)
                 }
             }
+            is HomeIntent.OpenSettings -> {
+                _effects.trySend(HomeEffect.NavigateToSettings)
+            }
             is HomeIntent.RetryClicked -> loadApps()
             else -> { /* Pure state transitions */ }
         }
@@ -101,7 +105,7 @@ class HomeStore @Inject constructor(
                 val now = System.currentTimeMillis()
                 val greeting = getGreeting(now)
                 val date = formatDate(now)
-                val time = formatTime(now)
+                val time = formatTime(now, _state.value.timeFormat)
                 send(HomeIntent.TimeUpdated(greeting, date, time))
                 kotlinx.coroutines.delay(60_000L)
             }
@@ -124,6 +128,21 @@ class HomeStore @Inject constructor(
         }
     }
 
+    private fun observeTimeFormat() {
+        viewModelScope.launch {
+            launcherPrefs.timeFormat.collect { format ->
+                send(HomeIntent.TimeFormatLoaded(format))
+                // Immediately update the time display with the new format
+                val now = System.currentTimeMillis()
+                send(HomeIntent.TimeUpdated(
+                    getGreeting(now),
+                    formatDate(now),
+                    formatTime(now, format),
+                ))
+            }
+        }
+    }
+
     private fun getGreeting(timestamp: Long): String {
         val hour = SimpleDateFormat("HH", Locale.getDefault()).format(Date(timestamp)).toInt()
         return when (hour) {
@@ -137,8 +156,9 @@ class HomeStore @Inject constructor(
         return SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(timestamp))
     }
 
-    private fun formatTime(timestamp: Long): String {
-        return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+    private fun formatTime(timestamp: Long, timeFormat: String): String {
+        val pattern = if (timeFormat == "12h") "h:mm a" else "HH:mm"
+        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timestamp))
     }
 
     private fun AppModel.toDisplayModel() = AppDisplayModel(
