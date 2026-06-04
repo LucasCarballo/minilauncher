@@ -12,6 +12,7 @@ import androidx.lifecycle.flowWithLifecycle
 @Composable
 fun HomeRoute(
     onSwipeRight: () -> Unit,
+    onLaunchApp: (packageName: String, activityName: String) -> Unit,
     viewModel: HomeStore = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -22,12 +23,8 @@ fun HomeRoute(
             .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
             .collect { effect ->
                 when (effect) {
-                    is HomeEffect.LaunchApp -> {
-                        // Launch handled by activity via callback
-                    }
-                    is HomeEffect.ShowToast -> {
-                        // Toast handled by activity
-                    }
+                    is HomeEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName)
+                    is HomeEffect.ShowToast -> { /* TODO: Toast */ }
                 }
             }
     }

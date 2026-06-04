@@ -120,7 +120,15 @@ wait_for_emulator() {
 
 start_with_vnc() {
     info "Starting Android emulator with VNC display..."
-    check_kvm
+
+    # Fix KVM permissions — Docker passes /dev/kvm with host GID which may not match container's kvm group
+    if [ -e /dev/kvm ]; then
+        chmod 666 /dev/kvm 2>/dev/null || true
+        ok "KVM acceleration available (/dev/kvm)"
+    else
+        warn "KVM not available — emulator will use software rendering (slow)"
+        warn "Add --device=/dev/kvm to your Docker run args for hardware acceleration"
+    fi
 
     # Start display stack via supervisord
     info "Starting virtual display (Xvfb + VNC + noVNC)..."

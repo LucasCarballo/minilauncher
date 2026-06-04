@@ -12,6 +12,7 @@ import androidx.lifecycle.flowWithLifecycle
 @Composable
 fun DrawerRoute(
     onBack: () -> Unit,
+    onLaunchApp: (packageName: String, activityName: String) -> Unit,
     viewModel: DrawerStore = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -22,12 +23,8 @@ fun DrawerRoute(
             .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
             .collect { effect ->
                 when (effect) {
-                    is DrawerEffect.LaunchApp -> {
-                        // Launch handled by activity
-                    }
-                    is DrawerEffect.ShowToast -> {
-                        // Toast handled by activity
-                    }
+                    is DrawerEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName)
+                    is DrawerEffect.ShowToast -> { /* TODO: Toast */ }
                 }
             }
     }
