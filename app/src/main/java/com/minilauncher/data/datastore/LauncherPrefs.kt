@@ -31,8 +31,13 @@ class LauncherPrefs @Inject constructor(
         private val KEY_TIME_FORMAT = stringPreferencesKey("time_format")
     }
 
-    val pinnedApps: Flow<Set<String>> = context.launcherDataStore.data.map { prefs ->
-        prefs[KEY_PINNED_APPS] ?: emptySet()
+    /**
+     * Emits the set of pinned app package names.
+     * Returns null when the key doesn't exist (user hasn't customized pins yet),
+     * allowing the UI to distinguish "not customized" from "customized to empty".
+     */
+    val pinnedApps: Flow<Set<String>?> = context.launcherDataStore.data.map { prefs ->
+        if (KEY_PINNED_APPS in prefs) prefs[KEY_PINNED_APPS] else null
     }
 
     val userName: Flow<String> = context.launcherDataStore.data.map { prefs ->

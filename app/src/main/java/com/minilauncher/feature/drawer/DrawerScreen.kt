@@ -15,7 +15,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +26,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -32,12 +37,14 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.minilauncher.data.model.AppDisplayModel
 import com.minilauncher.data.model.AppListError
 import com.minilauncher.ui.component.AppNameItem
 import com.minilauncher.ui.component.SearchInput
 import com.minilauncher.ui.theme.Spacing
 import com.minilauncher.ui.theme.TextPrimary
 import com.minilauncher.ui.theme.TextSecondary
+import com.minilauncher.ui.theme.Surface2
 import com.minilauncher.ui.theme.TextTertiary
 import kotlin.math.abs
 
@@ -61,8 +68,6 @@ fun DrawerScreen(
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
-                        // Wait for a down event — observe even if consumed by children
-                        // Use Initial pass to see events BEFORE children process them
                         var downChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
                         while (downChange == null) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -77,7 +82,6 @@ fun DrawerScreen(
                         var endX = startX
                         var endY = startY
 
-                        // Track until pointer is released
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == pointerId }
@@ -90,10 +94,6 @@ fun DrawerScreen(
                         val verticalDisplacement = endY - startY
                         val horizontalDisplacement = abs(startX - endX)
 
-                        // Only trigger swipe-down if:
-                        // 1. Vertical displacement exceeds threshold
-                        // 2. Swipe is primarily vertical
-                        // 3. LazyColumn is at the top
                         val isAtTop = listState.firstVisibleItemIndex == 0 &&
                             listState.firstVisibleItemScrollOffset == 0
 
@@ -145,7 +145,8 @@ fun DrawerScreen(
                 AppList(
                     apps = state.filteredApps,
                     query = state.query,
-                    onAppClick = { onIntent(DrawerIntent.AppClicked(it)) },
+                    pinnedPackageNames = state.pinnedPackageNames,
+                    onIntent = onIntent,
                     listState = listState,
                 )
             }
@@ -162,9 +163,12 @@ fun DrawerScreen(
 private fun AppList(
     apps: kotlinx.collections.immutable.ImmutableList<AppDisplayModel>,
     query: String,
-    onAppClick: (AppDisplayModel) -> Unit,
+    pinnedPackageNames: Set<String>,
+    onIntent: (DrawerIntent) -> Unit,
     listState: LazyListState,
 ) {
+    var contextMenuApp by remember { mutableStateOf<AppDisplayModel?>(null) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
@@ -174,11 +178,58 @@ private fun AppList(
             key = { apps[it].packageName },
         ) { index ->
             val app = apps[index]
-            AppNameItem(
-                label = app.label,
-                query = query,
-                onClick = { onAppClick(app) },
-            )
+            val isPinned = app.packageName in pinnedPackageNames
+
+            Box {
+                AppNameItem(
+                    label = app.label,
+                    onClick = { onIntent(DrawerIntent.AppClicked(app)) },
+                    onLongClick = { contextMenuApp = app },
+                    query = query,
+                )
+
+                DropdownMenu(
+                    expanded = contextMenuApp == app,
+                    onDismissRequest = { contextMenuApp = null },
+                    containerColor = Surface2,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                ) {
+                    if (isPinned) {
+                        DropdownMenuItem(
+                            text = { Text("Unpin from Home") },
+                            onClick = {
+                                onIntent(DrawerIntent.UnpinApp(app.packageName))
+                                contextMenuApp = null
+                            },
+                            colors = MenuDefaults.itemColors(
+                                textColor = TextPrimary,
+                            ),
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Pin to Home") },
+                            onClick = {
+                                onIntent(DrawerIntent.PinApp(app.packageName))
+                                contextMenuApp = null
+                            },
+                            colors = MenuDefaults.itemColors(
+                                textColor = TextPrimary,
+                            ),
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("App info") },
+                        onClick = {
+                            onIntent(DrawerIntent.AppInfoClicked(app.packageName))
+                            contextMenuApp = null
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = TextSecondary,
+                        ),
+                    )
+                }
+            }
         }
     }
 }

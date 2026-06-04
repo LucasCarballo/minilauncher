@@ -1,8 +1,12 @@
 package com.minilauncher.feature.home
 
+import com.minilauncher.data.model.AppDisplayModel
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 
 object HomeReducer {
 
@@ -10,12 +14,19 @@ object HomeReducer {
         when (intent) {
             is HomeIntent.LoadApps -> state.copy(isLoading = true, error = null)
 
-            is HomeIntent.AppsLoaded -> state.copy(
-                allApps = intent.apps,
-                pinnedApps = filterPinned(state, intent.apps),
-                isLoading = false,
-                error = null,
-            )
+            is HomeIntent.AppsLoaded -> {
+                val newPinnedApps = computePinnedApps(
+                    allApps = intent.apps,
+                    pinnedPackageNames = state.pinnedPackageNames,
+                    pinsCustomized = state.pinsCustomized,
+                )
+                state.copy(
+                    allApps = intent.apps,
+                    pinnedApps = newPinnedApps,
+                    isLoading = false,
+                    error = null,
+                )
+            }
 
             is HomeIntent.AppsLoadFailed -> state.copy(
                 isLoading = false,
@@ -24,11 +35,50 @@ object HomeReducer {
 
             is HomeIntent.AppClicked -> state // Side effect handled in Store
 
-            is HomeIntent.RemoveFromPinned -> state.copy(
-                pinnedApps = state.pinnedApps
-                    .filterNot { it.packageName == intent.app.packageName }
-                    .toImmutableList(),
-            )
+            is HomeIntent.PinApp -> {
+                val newPinnedPackageNames = (state.pinnedPackageNames + intent.packageName).toImmutableSet()
+                val newPinnedApps = computePinnedApps(
+                    allApps = state.allApps,
+                    pinnedPackageNames = newPinnedPackageNames,
+                    pinsCustomized = true,
+                )
+                state.copy(
+                    pinnedPackageNames = newPinnedPackageNames,
+                    pinnedApps = newPinnedApps,
+                    pinsCustomized = true,
+                )
+            }
+
+            is HomeIntent.UnpinApp -> {
+                val newPinnedPackageNames = (state.pinnedPackageNames - intent.packageName).toImmutableSet()
+                val newPinnedApps = computePinnedApps(
+                    allApps = state.allApps,
+                    pinnedPackageNames = newPinnedPackageNames,
+                    pinsCustomized = true,
+                )
+                state.copy(
+                    pinnedPackageNames = newPinnedPackageNames,
+                    pinnedApps = newPinnedApps,
+                    pinsCustomized = true,
+                )
+            }
+
+            is HomeIntent.PinnedAppsLoaded -> {
+                val pinsCustomized = intent.packageNames != null
+                val pinnedPackageNames = intent.packageNames?.toImmutableSet() ?: persistentSetOf()
+                val newPinnedApps = computePinnedApps(
+                    allApps = state.allApps,
+                    pinnedPackageNames = pinnedPackageNames,
+                    pinsCustomized = pinsCustomized,
+                )
+                state.copy(
+                    pinnedPackageNames = pinnedPackageNames,
+                    pinnedApps = newPinnedApps,
+                    pinsCustomized = pinsCustomized,
+                )
+            }
+
+            is HomeIntent.AppInfoClicked -> state // Side effect handled in Store
 
             is HomeIntent.TimeUpdated -> state.copy(
                 greeting = intent.greeting,
@@ -44,19 +94,20 @@ object HomeReducer {
         }
 
     /**
-     * Filters all apps to only those in the pinned set.
-     * Preserves pinned order, falls back to first 5 apps if no pins configured.
+     * Computes the list of pinned apps from all apps and pinned package names.
+     * If pins have not been customized yet, returns the first 5 apps as defaults.
+     * If pins are customized, returns only the apps whose package names are in the pinned set,
+     * preserving the order they appear in allApps.
      */
-    private fun filterPinned(
-        state: HomeUiState,
-        apps: ImmutableList<AppDisplayModel>,
+    private fun computePinnedApps(
+        allApps: ImmutableList<AppDisplayModel>,
+        pinnedPackageNames: ImmutableSet<String>,
+        pinsCustomized: Boolean,
     ): ImmutableList<AppDisplayModel> {
-        // If no pinned apps configured yet, show first 5
-        if (state.pinnedApps.isEmpty() && apps.isNotEmpty()) {
-            return apps.take(minOf(5, apps.size)).toImmutableList()
+        if (!pinsCustomized && allApps.isNotEmpty()) {
+            return allApps.take(minOf(5, allApps.size)).toImmutableList()
         }
-        // Filter all apps to only pinned ones, preserving pinned order
-        val pinnedSet = state.pinnedApps.map { it.packageName }.toSet()
-        return apps.filter { it.packageName in pinnedSet }.toImmutableList()
+        if (pinnedPackageNames.isEmpty()) return persistentListOf()
+        return allApps.filter { it.packageName in pinnedPackageNames }.toImmutableList()
     }
 }

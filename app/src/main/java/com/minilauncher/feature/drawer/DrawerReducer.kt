@@ -1,8 +1,11 @@
 package com.minilauncher.feature.drawer
 
+import com.minilauncher.data.model.AppDisplayModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 
 object DrawerReducer {
 
@@ -29,6 +32,20 @@ object DrawerReducer {
             )
 
             is DrawerIntent.AppClicked -> state // Side effect handled in Store
+
+            is DrawerIntent.PinApp -> state.copy(
+                pinnedPackageNames = (state.pinnedPackageNames + intent.packageName).toImmutableSet(),
+            )
+
+            is DrawerIntent.UnpinApp -> state.copy(
+                pinnedPackageNames = (state.pinnedPackageNames - intent.packageName).toImmutableSet(),
+            )
+
+            is DrawerIntent.PinnedAppsLoaded -> state.copy(
+                pinnedPackageNames = intent.packageNames?.toImmutableSet() ?: persistentSetOf(),
+            )
+
+            is DrawerIntent.AppInfoClicked -> state // Side effect handled in Store
 
             is DrawerIntent.RetryClicked -> state.copy(isLoading = true, error = null)
         }

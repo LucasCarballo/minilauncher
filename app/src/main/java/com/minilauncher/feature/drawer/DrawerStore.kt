@@ -2,6 +2,8 @@ package com.minilauncher.feature.drawer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.minilauncher.data.datastore.LauncherPrefs
+import com.minilauncher.data.model.AppDisplayModel
 import com.minilauncher.data.model.AppListError
 import com.minilauncher.data.model.AppModel
 import com.minilauncher.data.repository.AppRepository
@@ -18,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DrawerStore @Inject constructor(
     private val appRepository: AppRepository,
+    private val launcherPrefs: LauncherPrefs,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DrawerUiState())
@@ -28,6 +31,7 @@ class DrawerStore @Inject constructor(
 
     init {
         loadApps()
+        observePinnedApps()
     }
 
     fun send(intent: DrawerIntent) {
@@ -45,6 +49,21 @@ class DrawerStore @Inject constructor(
                         intent.app.activityName,
                     )
                 )
+            }
+            is DrawerIntent.AppInfoClicked -> {
+                _effects.trySend(DrawerEffect.ShowAppInfo(intent.packageName))
+            }
+            is DrawerIntent.PinApp -> {
+                viewModelScope.launch {
+                    val currentPins = _state.value.pinnedPackageNames.toSet()
+                    launcherPrefs.setPinnedApps(currentPins + intent.packageName)
+                }
+            }
+            is DrawerIntent.UnpinApp -> {
+                viewModelScope.launch {
+                    val currentPins = _state.value.pinnedPackageNames.toSet()
+                    launcherPrefs.setPinnedApps(currentPins - intent.packageName)
+                }
             }
             is DrawerIntent.RetryClicked -> loadApps()
             else -> { /* Pure state transitions */ }
@@ -68,6 +87,14 @@ class DrawerStore @Inject constructor(
                     }
                     send(DrawerIntent.AppsLoadFailed(appError))
                 }
+        }
+    }
+
+    private fun observePinnedApps() {
+        viewModelScope.launch {
+            launcherPrefs.pinnedApps.collect { pinnedSet ->
+                send(DrawerIntent.PinnedAppsLoaded(pinnedSet))
+            }
         }
     }
 

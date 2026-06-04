@@ -3,6 +3,7 @@ package com.minilauncher.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minilauncher.data.datastore.LauncherPrefs
+import com.minilauncher.data.model.AppDisplayModel
 import com.minilauncher.data.model.AppListError
 import com.minilauncher.data.model.AppModel
 import com.minilauncher.data.repository.AppRepository
@@ -35,6 +36,7 @@ class HomeStore @Inject constructor(
         loadApps()
         startTimeUpdates()
         observeUserName()
+        observePinnedApps()
     }
 
     fun send(intent: HomeIntent) {
@@ -52,6 +54,21 @@ class HomeStore @Inject constructor(
                         intent.app.activityName,
                     )
                 )
+            }
+            is HomeIntent.AppInfoClicked -> {
+                _effects.trySend(HomeEffect.ShowAppInfo(intent.packageName))
+            }
+            is HomeIntent.PinApp -> {
+                viewModelScope.launch {
+                    val currentPins = _state.value.pinnedPackageNames.toSet()
+                    launcherPrefs.setPinnedApps(currentPins + intent.packageName)
+                }
+            }
+            is HomeIntent.UnpinApp -> {
+                viewModelScope.launch {
+                    val currentPins = _state.value.pinnedPackageNames.toSet()
+                    launcherPrefs.setPinnedApps(currentPins - intent.packageName)
+                }
             }
             is HomeIntent.RetryClicked -> loadApps()
             else -> { /* Pure state transitions */ }
@@ -86,7 +103,7 @@ class HomeStore @Inject constructor(
                 val date = formatDate(now)
                 val time = formatTime(now)
                 send(HomeIntent.TimeUpdated(greeting, date, time))
-                kotlinx.coroutines.delay(60_000L) // Update every minute
+                kotlinx.coroutines.delay(60_000L)
             }
         }
     }
@@ -95,6 +112,14 @@ class HomeStore @Inject constructor(
         viewModelScope.launch {
             launcherPrefs.userName.collect { name ->
                 send(HomeIntent.UserNameLoaded(name))
+            }
+        }
+    }
+
+    private fun observePinnedApps() {
+        viewModelScope.launch {
+            launcherPrefs.pinnedApps.collect { pinnedSet ->
+                send(HomeIntent.PinnedAppsLoaded(pinnedSet))
             }
         }
     }

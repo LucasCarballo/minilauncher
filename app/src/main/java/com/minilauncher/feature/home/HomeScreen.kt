@@ -9,12 +9,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -22,13 +28,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.minilauncher.data.model.AppDisplayModel
 import com.minilauncher.data.model.AppListError
-import kotlin.math.abs
 import com.minilauncher.ui.component.AppNameItem
 import com.minilauncher.ui.theme.Spacing
 import com.minilauncher.ui.theme.TextPrimary
 import com.minilauncher.ui.theme.TextSecondary
+import com.minilauncher.ui.theme.Surface2
 import com.minilauncher.ui.theme.TextTertiary
+import kotlin.math.abs
 
 private val SwipeUpThreshold = 50.dp
 
@@ -47,8 +55,6 @@ fun HomeScreen(
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
-                        // Wait for a down event — observe even if consumed by children
-                        // Use Initial pass to see events BEFORE children process them
                         var downChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
                         while (downChange == null) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -63,7 +69,6 @@ fun HomeScreen(
                         var endX = startX
                         var endY = startY
 
-                        // Track until pointer is released
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull { it.id == pointerId }
@@ -76,7 +81,6 @@ fun HomeScreen(
                         val verticalDisplacement = startY - endY
                         val horizontalDisplacement = abs(startX - endX)
 
-                        // Only trigger if swipe is primarily vertical and exceeds threshold
                         if (verticalDisplacement > thresholdPx && verticalDisplacement > horizontalDisplacement) {
                             currentOnSwipeUp()
                         }
@@ -108,9 +112,9 @@ private fun HomeContent(
     state: HomeUiState,
     onIntent: (HomeIntent) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-    ) {
+    var contextMenuApp by remember { mutableStateOf<AppDisplayModel?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
         // Greeting
         val greetingText = if (state.userName.isNotBlank()) {
             "${state.greeting}, ${state.userName}"
@@ -143,19 +147,50 @@ private fun HomeContent(
 
         Spacer(modifier = Modifier.height(Spacing.lg))
 
-        // Pinned apps
+        // Pinned apps with context menu
         state.pinnedApps.forEach { app ->
-            AppNameItem(
-                label = app.label,
-                onClick = { onIntent(HomeIntent.AppClicked(app)) },
-                onLongClick = { /* TODO: context menu */ },
-            )
+            Box {
+                AppNameItem(
+                    label = app.label,
+                    onClick = { onIntent(HomeIntent.AppClicked(app)) },
+                    onLongClick = { contextMenuApp = app },
+                )
+
+                DropdownMenu(
+                    expanded = contextMenuApp == app,
+                    onDismissRequest = { contextMenuApp = null },
+                    containerColor = Surface2,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Remove from Home") },
+                        onClick = {
+                            onIntent(HomeIntent.UnpinApp(app.packageName))
+                            contextMenuApp = null
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = TextPrimary,
+                        ),
+                    )
+                    DropdownMenuItem(
+                        text = { Text("App info") },
+                        onClick = {
+                            onIntent(HomeIntent.AppInfoClicked(app.packageName))
+                            contextMenuApp = null
+                        },
+                        colors = MenuDefaults.itemColors(
+                            textColor = TextSecondary,
+                        ),
+                    )
+                }
+            }
         }
 
         // Bottom hint
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .padding(bottom = Spacing.md),
             contentAlignment = Alignment.BottomStart,
         ) {

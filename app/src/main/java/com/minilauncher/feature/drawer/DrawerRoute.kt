@@ -1,9 +1,13 @@
 package com.minilauncher.feature.drawer
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -18,6 +22,7 @@ fun DrawerRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
 
     BackHandler(onBack = onBack)
 
@@ -27,6 +32,13 @@ fun DrawerRoute(
             .collect { effect ->
                 when (effect) {
                     is DrawerEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName)
+                    is DrawerEffect.ShowAppInfo -> {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", effect.packageName, null)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
                     is DrawerEffect.ShowToast -> { /* TODO: Toast */ }
                 }
             }
