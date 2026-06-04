@@ -17,7 +17,7 @@ import androidx.lifecycle.flowWithLifecycle
 @Composable
 fun DrawerRoute(
     onBack: () -> Unit,
-    onLaunchApp: (packageName: String, activityName: String) -> Unit,
+    onLaunchApp: (packageName: String, activityName: String, isWorkProfile: Boolean) -> Unit,
     viewModel: DrawerStore = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -31,7 +31,7 @@ fun DrawerRoute(
             .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
             .collect { effect ->
                 when (effect) {
-                    is DrawerEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName)
+                    is DrawerEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName, effect.isWorkProfile)
                     is DrawerEffect.ShowAppInfo -> {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.fromParts("package", effect.packageName, null)

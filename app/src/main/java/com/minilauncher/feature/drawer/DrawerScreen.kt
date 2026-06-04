@@ -184,6 +184,7 @@ private fun AppList(
                     onClick = { onIntent(DrawerIntent.AppClicked(app)) },
                     onLongClick = { contextMenuApp = app },
                     query = query,
+                    isWorkProfile = app.isWorkProfile,
                 )
 
                 DropdownMenu(

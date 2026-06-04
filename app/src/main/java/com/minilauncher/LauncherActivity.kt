@@ -1,8 +1,12 @@
 package com.minilauncher
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.os.Bundle
+import android.os.Process
+import android.os.UserHandle
 import android.view.View
 import android.view.WindowInsetsController
 import android.widget.Toast
@@ -34,6 +38,10 @@ sealed interface Screen {
 @AndroidEntryPoint
 class LauncherActivity : ComponentActivity() {
 
+    private val launcherApps: LauncherApps? by lazy {
+        getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -51,8 +59,8 @@ class LauncherActivity : ComponentActivity() {
                     HomeRoute(
                         onSwipeUp = { currentScreen = Screen.Drawer },
                         onOpenSettings = { currentScreen = Screen.Settings },
-                        onLaunchApp = { packageName, activityName ->
-                            launchApp(packageName, activityName)
+                        onLaunchApp = { packageName, activityName, isWorkProfile ->
+                            launchApp(packageName, activityName, isWorkProfile)
                         },
                     )
 
@@ -64,8 +72,8 @@ class LauncherActivity : ComponentActivity() {
                     ) {
                         DrawerRoute(
                             onBack = { currentScreen = Screen.Home },
-                            onLaunchApp = { packageName, activityName ->
-                                launchApp(packageName, activityName)
+                            onLaunchApp = { packageName, activityName, isWorkProfile ->
+                                launchApp(packageName, activityName, isWorkProfile)
                             },
                         )
                     }
@@ -103,7 +111,15 @@ class LauncherActivity : ComponentActivity() {
             )
     }
 
-    private fun launchApp(packageName: String, activityName: String) {
+    private fun launchApp(packageName: String, activityName: String, isWorkProfile: Boolean) {
+        if (isWorkProfile) {
+            launchWorkProfileApp(packageName, activityName)
+        } else {
+            launchPersonalApp(packageName, activityName)
+        }
+    }
+
+    private fun launchPersonalApp(packageName: String, activityName: String) {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
             component = ComponentName(packageName, activityName)
@@ -115,5 +131,34 @@ class LauncherActivity : ComponentActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "App not available", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun launchWorkProfileApp(packageName: String, activityName: String) {
+        val component = ComponentName(packageName, activityName)
+        val apps = launcherApps ?: run {
+            // Fallback to regular launch if LauncherApps unavailable
+            launchPersonalApp(packageName, activityName)
+            return
+        }
+
+        // Find the work profile UserHandle
+        val profiles = try {
+            apps.profiles
+        } catch (_: SecurityException) {
+            listOf(Process.myUserHandle())
+        }
+
+        val workProfile = profiles.firstOrNull { it != Process.myUserHandle() }
+        if (workProfile != null) {
+            try {
+                apps.startMainActivity(component, workProfile, null, null)
+                return
+            } catch (_: Exception) {
+                // Fall through to regular launch
+            }
+        }
+
+        // Fallback: try launching via intent
+        launchPersonalApp(packageName, activityName)
     }
 }

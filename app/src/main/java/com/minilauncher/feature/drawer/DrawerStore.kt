@@ -47,6 +47,7 @@ class DrawerStore @Inject constructor(
                     DrawerEffect.LaunchApp(
                         intent.app.packageName,
                         intent.app.activityName,
+                        intent.app.isWorkProfile,
                     )
                 )
             }
@@ -102,5 +103,6 @@ class DrawerStore @Inject constructor(
         label = label,
         packageName = packageName,
         activityName = activityName,
+        isWorkProfile = isWorkProfile,
     )
 }

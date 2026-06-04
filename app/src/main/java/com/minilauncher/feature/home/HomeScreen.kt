@@ -159,6 +159,7 @@ private fun HomeContent(
                     label = app.label,
                     onClick = { onIntent(HomeIntent.AppClicked(app)) },
                     onLongClick = { contextMenuApp = app },
+                    isWorkProfile = app.isWorkProfile,
                 )
 
                 DropdownMenu(

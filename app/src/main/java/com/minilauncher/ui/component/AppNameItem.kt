@@ -16,6 +16,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.minilauncher.ui.theme.Spacing
 import com.minilauncher.ui.theme.TextPrimary
+import com.minilauncher.ui.theme.TextTertiary
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -24,13 +25,14 @@ fun AppNameItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     query: String? = null,
+    isWorkProfile: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val displayText = if (!query.isNullOrBlank()) {
         buildAnnotatedString {
             val lowerLabel = label.lowercase()
             val lowerQuery = query.lowercase()
-            var startIndex = lowerLabel.indexOf(lowerQuery)
+            val startIndex = lowerLabel.indexOf(lowerQuery)
             if (startIndex >= 0) {
                 append(label.substring(0, startIndex))
                 withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
@@ -66,5 +68,13 @@ fun AppNameItem(
             style = MaterialTheme.typography.bodyLarge,
             color = TextPrimary,
         )
+        if (isWorkProfile) {
+            Text(
+                text = " Work",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextTertiary,
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        }
     }
 }

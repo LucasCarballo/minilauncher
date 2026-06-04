@@ -53,6 +53,7 @@ class HomeStore @Inject constructor(
                     HomeEffect.LaunchApp(
                         intent.app.packageName,
                         intent.app.activityName,
+                        intent.app.isWorkProfile,
                     )
                 )
             }
@@ -165,5 +166,6 @@ class HomeStore @Inject constructor(
         label = label,
         packageName = packageName,
         activityName = activityName,
+        isWorkProfile = isWorkProfile,
     )
 }

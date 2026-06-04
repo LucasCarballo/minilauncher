@@ -11,4 +11,5 @@ data class AppDisplayModel(
     val label: String,
     val packageName: String,
     val activityName: String,
+    val isWorkProfile: Boolean = false,
 )

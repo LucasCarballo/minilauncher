@@ -31,7 +31,7 @@ sealed interface DrawerIntent {
 }
 
 sealed interface DrawerEffect {
-    data class LaunchApp(val packageName: String, val activityName: String) : DrawerEffect
+    data class LaunchApp(val packageName: String, val activityName: String, val isWorkProfile: Boolean) : DrawerEffect
     data class ShowAppInfo(val packageName: String) : DrawerEffect
     data class ShowToast(val message: String) : DrawerEffect
 }

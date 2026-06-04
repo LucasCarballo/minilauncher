@@ -40,7 +40,7 @@ sealed interface HomeIntent {
 }
 
 sealed interface HomeEffect {
-    data class LaunchApp(val packageName: String, val activityName: String) : HomeEffect
+    data class LaunchApp(val packageName: String, val activityName: String, val isWorkProfile: Boolean) : HomeEffect
     data class ShowAppInfo(val packageName: String) : HomeEffect
     data object NavigateToSettings : HomeEffect
     data class ShowToast(val message: String) : HomeEffect

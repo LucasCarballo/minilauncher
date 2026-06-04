@@ -4,10 +4,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.content.pm.LauncherApps
 import android.os.Process
 import android.os.UserHandle
+import android.os.UserManager
 import com.minilauncher.data.model.AppListError
 import com.minilauncher.data.model.AppModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,7 +17,10 @@ import javax.inject.Singleton
 /**
  * Repository for querying and launching installed applications.
  *
- * Defensive: all PackageManager calls are wrapped in try/catch.
+ * Uses LauncherApps API to query apps across all user profiles (personal + work).
+ * Falls back to PackageManager if LauncherApps is unavailable.
+ *
+ * Defensive: all calls are wrapped in try/catch.
  * Never lets one bad package crash the launcher.
  */
 @Singleton
@@ -25,11 +28,20 @@ class AppRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val packageManager: PackageManager = context.packageManager
+    private val launcherApps: LauncherApps? =
+        context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
+    private val userManager: UserManager? =
+        context.getSystemService(Context.USER_SERVICE) as? UserManager
 
     /**
-     * Returns all launchable apps installed on the device.
-     * Uses LauncherApps API on API 25+ for launcher-optimized queries,
-     * falls back to queryIntentActivities.
+     * Maps component keys ("packageName/activityName") to their UserHandle
+     * for launching work profile apps via LauncherApps.
+     */
+    private val userHandleMap = mutableMapOf<String, UserHandle>()
+
+    /**
+     * Returns all launchable apps installed on the device, including work profile.
+     * Uses LauncherApps API to query across all profiles.
      */
     fun getInstalledApps(): Result<List<AppModel>> = try {
         val apps = queryLaunchableApps()
@@ -43,10 +55,26 @@ class AppRepository @Inject constructor(
     }
 
     /**
-     * Launch an app by its package and activity name.
-     * Returns true if launch succeeded, false otherwise.
+     * Launch an app by its package, activity name, and profile.
+     * Uses LauncherApps for work profile apps, falls back to Intent for personal apps.
      */
     fun launchApp(app: AppModel): Boolean {
+        return try {
+            val component = ComponentName(app.packageName, app.activityName)
+            if (app.isWorkProfile && launcherApps != null) {
+                val userHandle = userHandleMap[app.componentKey]
+                    ?: return launchViaIntent(app)
+                launcherApps.startMainActivity(component, userHandle, null, null)
+                true
+            } else {
+                launchViaIntent(app)
+            }
+        } catch (e: Exception) {
+            launchViaIntent(app)
+        }
+    }
+
+    private fun launchViaIntent(app: AppModel): Boolean {
         return try {
             val intent = Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
@@ -62,6 +90,72 @@ class AppRepository @Inject constructor(
     }
 
     private fun queryLaunchableApps(): List<AppModel> {
+        userHandleMap.clear()
+
+        // Try LauncherApps first — supports work profiles
+        if (launcherApps != null) {
+            return try {
+                queryWithLauncherApps()
+            } catch (e: SecurityException) {
+                queryWithPackageManager()
+            } catch (e: Exception) {
+                queryWithPackageManager()
+            }
+        }
+
+        return queryWithPackageManager()
+    }
+
+    private fun queryWithLauncherApps(): List<AppModel> {
+        val myUserHandle = Process.myUserHandle()
+        val apps = mutableListOf<AppModel>()
+
+        // Get all user profiles (personal + work)
+        val profiles = try {
+            launcherApps?.profiles ?: listOf(myUserHandle)
+        } catch (_: SecurityException) {
+            listOf(myUserHandle)
+        }
+
+        for (profile in profiles) {
+            val isWorkProfile = profile != myUserHandle
+
+            // Query launchable activities for this profile
+            val launcherActivities = try {
+                launcherApps?.getActivityList(null, profile) ?: emptyList()
+            } catch (_: SecurityException) {
+                continue
+            } catch (_: Exception) {
+                continue
+            }
+
+            for (activityInfo in launcherActivities) {
+                val packageName = activityInfo.applicationInfo.packageName
+                // Skip self
+                if (packageName == context.packageName) continue
+
+                val label = activityInfo.label?.toString() ?: packageName
+                val activityName = activityInfo.name
+
+                // Store UserHandle for launching
+                val key = "$packageName/$activityName"
+                userHandleMap[key] = profile
+
+                apps.add(
+                    AppModel(
+                        label = label,
+                        packageName = packageName,
+                        activityName = activityName,
+                        isWorkProfile = isWorkProfile,
+                    )
+                )
+            }
+        }
+
+        return apps.sortedWith(compareBy({ it.isWorkProfile }, { it.label.lowercase() }))
+    }
+
+    private fun queryWithPackageManager(): List<AppModel> {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
@@ -79,6 +173,7 @@ class AppRepository @Inject constructor(
                             ?: activityInfo.packageName,
                         packageName = activityInfo.packageName,
                         activityName = activityInfo.name ?: "",
+                        isWorkProfile = false,
                     )
                 } catch (e: Exception) {
                     null
@@ -86,4 +181,7 @@ class AppRepository @Inject constructor(
             }
             .sortedBy { it.label.lowercase() }
     }
+
+    private val AppModel.componentKey: String
+        get() = "$packageName/$activityName"
 }

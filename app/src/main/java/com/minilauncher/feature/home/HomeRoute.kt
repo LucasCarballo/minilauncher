@@ -17,7 +17,7 @@ import androidx.lifecycle.flowWithLifecycle
 fun HomeRoute(
     onSwipeUp: () -> Unit,
     onOpenSettings: () -> Unit,
-    onLaunchApp: (packageName: String, activityName: String) -> Unit,
+    onLaunchApp: (packageName: String, activityName: String, isWorkProfile: Boolean) -> Unit,
     viewModel: HomeStore = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -29,7 +29,7 @@ fun HomeRoute(
             .flowWithLifecycle(lifecycleOwner.lifecycle, Lifecycle.State.STARTED)
             .collect { effect ->
                 when (effect) {
-                    is HomeEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName)
+                    is HomeEffect.LaunchApp -> onLaunchApp(effect.packageName, effect.activityName, effect.isWorkProfile)
                     is HomeEffect.ShowAppInfo -> {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.fromParts("package", effect.packageName, null)
