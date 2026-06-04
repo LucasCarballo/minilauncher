@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background -->
+    <color name="black">#FF000000</color>
+
+    <!-- Text hierarchy -->
+    <color name="text_primary">#FFF5F5F7</color>
+    <color name="text_secondary">#FFA1A1A6</color>
+    <color name="text_tertiary">#FF6E6E73</color>
+
+    <!-- Surfaces -->
+    <color name="surface_1">#FF1A1A1A</color>
+    <color name="surface_2">#FF222222</color>
+</resources>
