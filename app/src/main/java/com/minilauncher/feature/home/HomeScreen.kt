@@ -1,8 +1,6 @@
 package com.minilauncher.feature.home
 
-import androidx.compose.animation.core.EaseOut
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,37 +11,80 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.minilauncher.data.model.AppListError
+import kotlin.math.abs
 import com.minilauncher.ui.component.AppNameItem
 import com.minilauncher.ui.theme.Spacing
 import com.minilauncher.ui.theme.TextPrimary
 import com.minilauncher.ui.theme.TextSecondary
 import com.minilauncher.ui.theme.TextTertiary
 
+private val SwipeUpThreshold = 50.dp
+
 @Composable
 fun HomeScreen(
     state: HomeUiState,
     onIntent: (HomeIntent) -> Unit,
-    onSwipeRight: () -> Unit,
+    onSwipeUp: () -> Unit,
 ) {
+    val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
+    val thresholdPx = with(LocalDensity.current) { SwipeUpThreshold.toPx() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = Spacing.md, top = Spacing.md)
-            .statusBarsPadding()
             .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    if (dragAmount > 50f) {
-                        onSwipeRight()
+                awaitPointerEventScope {
+                    while (true) {
+                        // Wait for a down event — observe even if consumed by children
+                        // Use Initial pass to see events BEFORE children process them
+                        var downChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
+                        while (downChange == null) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            downChange = event.changes.firstOrNull {
+                                it.pressed && !it.previousPressed
+                            }
+                        }
+
+                        val startX = downChange.position.x
+                        val startY = downChange.position.y
+                        val pointerId = downChange.id
+                        var endX = startX
+                        var endY = startY
+
+                        // Track until pointer is released
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == pointerId }
+                            if (change == null) break
+                            endX = change.position.x
+                            endY = change.position.y
+                            if (!change.pressed) break
+                        }
+
+                        val verticalDisplacement = startY - endY
+                        val horizontalDisplacement = abs(startX - endX)
+
+                        // Only trigger if swipe is primarily vertical and exceeds threshold
+                        if (verticalDisplacement > thresholdPx && verticalDisplacement > horizontalDisplacement) {
+                            currentOnSwipeUp()
+                        }
                     }
                 }
-            },
+            }
+            .padding(start = Spacing.md, top = Spacing.md)
+            .statusBarsPadding(),
     ) {
         when {
             state.isLoading -> {
@@ -119,7 +160,7 @@ private fun HomeContent(
             contentAlignment = Alignment.BottomStart,
         ) {
             Text(
-                text = "← swipe right for all apps",
+                text = "↑ swipe up for all apps",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                 color = TextTertiary,
             )
@@ -135,7 +176,7 @@ private fun ErrorState(
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = when (error) {
@@ -147,7 +188,7 @@ private fun ErrorState(
             color = TextSecondary,
         )
         Spacer(modifier = Modifier.height(Spacing.md))
-        androidx.compose.material3.TextButton(onClick = { onIntent(HomeIntent.RetryClicked) }) {
+        TextButton(onClick = { onIntent(HomeIntent.RetryClicked) }) {
             Text("Retry", color = TextPrimary)
         }
     }

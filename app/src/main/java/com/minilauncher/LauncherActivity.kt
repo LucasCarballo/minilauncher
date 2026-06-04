@@ -8,11 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.minilauncher.feature.drawer.DrawerRoute
 import com.minilauncher.feature.home.HomeRoute
@@ -33,22 +34,22 @@ class LauncherActivity : ComponentActivity() {
 
         setContent {
             MiniLauncherTheme {
-                var currentScreen by mutableStateOf<Screen>(Screen.Home)
+                var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
 
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
                         if (targetState == Screen.Drawer) {
-                            slideInHorizontally { it } togetherWith slideOutHorizontally { -it / 3 }
+                            slideInVertically { it } togetherWith slideOutVertically { -it / 3 }
                         } else {
-                            slideInHorizontally { -it / 3 } togetherWith slideOutHorizontally { it }
+                            slideInVertically { -it / 3 } togetherWith slideOutVertically { it }
                         }
                     },
                     label = "screen_transition",
                 ) { screen ->
                     when (screen) {
                         Screen.Home -> HomeRoute(
-                            onSwipeRight = { currentScreen = Screen.Drawer },
+                            onSwipeUp = { currentScreen = Screen.Drawer },
                             onLaunchApp = { packageName, activityName ->
                                 launchApp(packageName, activityName)
                             },

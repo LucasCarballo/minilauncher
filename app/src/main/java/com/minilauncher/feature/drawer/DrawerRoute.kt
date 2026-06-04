@@ -1,5 +1,6 @@
 package com.minilauncher.feature.drawer
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +18,8 @@ fun DrawerRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    BackHandler(onBack = onBack)
 
     LaunchedEffect(Unit) {
         viewModel.effects

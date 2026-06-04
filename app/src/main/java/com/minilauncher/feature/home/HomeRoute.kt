@@ -11,7 +11,7 @@ import androidx.lifecycle.flowWithLifecycle
 
 @Composable
 fun HomeRoute(
-    onSwipeRight: () -> Unit,
+    onSwipeUp: () -> Unit,
     onLaunchApp: (packageName: String, activityName: String) -> Unit,
     viewModel: HomeStore = hiltViewModel(),
 ) {
@@ -32,6 +32,6 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onIntent = viewModel::send,
-        onSwipeRight = onSwipeRight,
+        onSwipeUp = onSwipeUp,
     )
 }
