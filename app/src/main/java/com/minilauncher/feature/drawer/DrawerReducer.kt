@@ -31,7 +31,7 @@ object DrawerReducer {
                 error = intent.error,
             )
 
-            is DrawerIntent.AppClicked -> state // Side effect handled in Store
+            is DrawerIntent.AppClicked -> state.copy(query = "", filteredApps = state.allApps)
 
             is DrawerIntent.PinApp -> state.copy(
                 pinnedPackageNames = (state.pinnedPackageNames + intent.packageName).toImmutableSet(),

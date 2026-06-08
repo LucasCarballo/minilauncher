@@ -18,16 +18,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.minilauncher.feature.drawer.DrawerRoute
 import com.minilauncher.feature.home.HomeRoute
 import com.minilauncher.feature.settings.SettingsRoute
 import com.minilauncher.ui.theme.MiniLauncherTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.MutableStateFlow
 
 sealed interface Screen {
     data object Home : Screen
@@ -37,6 +36,8 @@ sealed interface Screen {
 
 @AndroidEntryPoint
 class LauncherActivity : ComponentActivity() {
+
+    private val currentScreen = MutableStateFlow<Screen>(Screen.Home)
 
     private val launcherApps: LauncherApps? by lazy {
         getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
@@ -52,13 +53,13 @@ class LauncherActivity : ComponentActivity() {
 
         setContent {
             MiniLauncherTheme {
-                var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+                val screen by currentScreen.collectAsState()
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Home screen is always in the composition — no recreation on transitions
                     HomeRoute(
-                        onSwipeUp = { currentScreen = Screen.Drawer },
-                        onOpenSettings = { currentScreen = Screen.Settings },
+                        onSwipeUp = { currentScreen.value = Screen.Drawer },
+                        onOpenSettings = { currentScreen.value = Screen.Settings },
                         onLaunchApp = { packageName, activityName, isWorkProfile ->
                             launchApp(packageName, activityName, isWorkProfile)
                         },
@@ -66,12 +67,12 @@ class LauncherActivity : ComponentActivity() {
 
                     // Drawer slides up from bottom, overlaying the home screen
                     AnimatedVisibility(
-                        visible = currentScreen == Screen.Drawer,
+                        visible = screen == Screen.Drawer,
                         enter = slideInVertically { it },
                         exit = slideOutVertically { it },
                     ) {
                         DrawerRoute(
-                            onBack = { currentScreen = Screen.Home },
+                            onBack = { currentScreen.value = Screen.Home },
                             onLaunchApp = { packageName, activityName, isWorkProfile ->
                                 launchApp(packageName, activityName, isWorkProfile)
                             },
@@ -80,17 +81,23 @@ class LauncherActivity : ComponentActivity() {
 
                     // Settings slides up from bottom, overlaying the home screen
                     AnimatedVisibility(
-                        visible = currentScreen == Screen.Settings,
+                        visible = screen == Screen.Settings,
                         enter = slideInVertically { it },
                         exit = slideOutVertically { it },
                     ) {
                         SettingsRoute(
-                            onBack = { currentScreen = Screen.Home },
+                            onBack = { currentScreen.value = Screen.Home },
                         )
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Returning to the launcher always goes to the home screen.
+        currentScreen.value = Screen.Home
     }
 
     private fun hideStatusBar() {

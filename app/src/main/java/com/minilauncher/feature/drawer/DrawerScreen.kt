@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.minilauncher.data.model.AppDisplayModel
 import com.minilauncher.data.model.AppListError
@@ -48,6 +51,7 @@ import com.minilauncher.ui.theme.TextTertiary
 import kotlin.math.abs
 
 private val SwipeDownThreshold = 50.dp
+private val BottomEdgeThreshold = 50.dp
 
 @Composable
 fun DrawerScreen(
@@ -57,13 +61,24 @@ fun DrawerScreen(
 ) {
     val currentOnBack by rememberUpdatedState(onBack)
     val thresholdPx = with(LocalDensity.current) { SwipeDownThreshold.toPx() }
+    val bottomEdgeThresholdPx = with(LocalDensity.current) { BottomEdgeThreshold.toPx() }
+    val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
+
+    val clearFocusOnAppClick: (DrawerIntent) -> Unit = { intent ->
+        if (intent is DrawerIntent.AppClicked) {
+            focusManager.clearFocus()
+        }
+        onIntent(intent)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .imePadding()
+            .navigationBarsPadding()
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -96,10 +111,15 @@ fun DrawerScreen(
                         val isAtTop = listState.firstVisibleItemIndex == 0 &&
                             listState.firstVisibleItemScrollOffset == 0
 
-                        if (verticalDisplacement > thresholdPx &&
+                        val isSwipeDown = verticalDisplacement > thresholdPx &&
                             verticalDisplacement > horizontalDisplacement &&
                             isAtTop
-                        ) {
+
+                        val isSwipeUpFromBottom = (startY - endY) > thresholdPx &&
+                            (startY - endY) > horizontalDisplacement &&
+                            startY > size.height - bottomEdgeThresholdPx
+
+                        if (isSwipeDown || isSwipeUpFromBottom) {
                             currentOnBack()
                         }
                     }
@@ -111,6 +131,10 @@ fun DrawerScreen(
         SearchInput(
             query = state.query,
             onQueryChanged = { onIntent(DrawerIntent.QueryChanged(it)) },
+            onClear = {
+                onIntent(DrawerIntent.QueryChanged(""))
+                focusManager.clearFocus()
+            },
             modifier = Modifier.focusRequester(focusRequester),
         )
 
@@ -144,7 +168,7 @@ fun DrawerScreen(
                     apps = state.filteredApps,
                     query = state.query,
                     pinnedPackageNames = state.pinnedPackageNames,
-                    onIntent = onIntent,
+                    onIntent = clearFocusOnAppClick,
                     listState = listState,
                 )
             }
