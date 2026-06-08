@@ -93,6 +93,10 @@ fun DrawerScreen(
                         val startX = downChange.position.x
                         val startY = downChange.position.y
                         val startHeight = size.height
+                        // Capture scroll position at gesture start — prevents false swipe-down
+                        // when the list flings to top during a scroll gesture
+                        val isAtTopAtStart = listState.firstVisibleItemIndex == 0 &&
+                            listState.firstVisibleItemScrollOffset == 0
                         val pointerId = downChange.id
                         var endX = startX
                         var endY = startY
@@ -109,12 +113,9 @@ fun DrawerScreen(
                         val verticalDisplacement = endY - startY
                         val horizontalDisplacement = abs(startX - endX)
 
-                        val isAtTop = listState.firstVisibleItemIndex == 0 &&
-                            listState.firstVisibleItemScrollOffset == 0
-
                         val isSwipeDown = verticalDisplacement > thresholdPx &&
                             verticalDisplacement > horizontalDisplacement &&
-                            isAtTop
+                            isAtTopAtStart
 
                         val isSwipeUpFromBottom = (startY - endY) > thresholdPx &&
                             (startY - endY) > horizontalDisplacement &&

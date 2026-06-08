@@ -96,8 +96,12 @@ class LauncherActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Returning to the launcher always goes to the home screen.
-        currentScreen.value = Screen.Home
+        // Only reset to home when the user presses home or taps the launcher icon.
+        // Other intents (e.g., PACKAGE_ADDED) should not close the drawer.
+        if (intent.action == Intent.ACTION_MAIN &&
+            (intent.hasCategory(Intent.CATEGORY_HOME) || intent.hasCategory(Intent.CATEGORY_LAUNCHER))) {
+            currentScreen.value = Screen.Home
+        }
     }
 
     private fun hideStatusBar() {
