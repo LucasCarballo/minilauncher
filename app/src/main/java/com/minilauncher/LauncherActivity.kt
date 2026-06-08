@@ -18,8 +18,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import com.minilauncher.feature.drawer.DrawerRoute
 import com.minilauncher.feature.home.HomeRoute
@@ -53,7 +53,7 @@ class LauncherActivity : ComponentActivity() {
 
         setContent {
             MiniLauncherTheme {
-                val screen by currentScreen.collectAsState()
+                val screen by currentScreen.collectAsStateWithLifecycle()
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Home screen is always in the composition — no recreation on transitions

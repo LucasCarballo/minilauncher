@@ -67,6 +67,7 @@ fun SettingsScreen(
 
                         val startX = downChange.position.x
                         val startY = downChange.position.y
+                        val startHeight = size.height
                         val pointerId = downChange.id
                         var endX = startX
                         var endY = startY
@@ -83,7 +84,13 @@ fun SettingsScreen(
                         val verticalDisplacement = endY - startY
                         val horizontalDisplacement = abs(startX - endX)
 
-                        if (verticalDisplacement > thresholdPx && verticalDisplacement > horizontalDisplacement) {
+                        val isAtTop = true // Settings is a single Column, always at top
+
+                        val isSwipeDown = verticalDisplacement > thresholdPx &&
+                            verticalDisplacement > horizontalDisplacement &&
+                            isAtTop
+
+                        if (isSwipeDown) {
                             currentOnSwipeDown()
                         }
                     }

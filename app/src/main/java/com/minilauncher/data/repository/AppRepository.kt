@@ -11,6 +11,12 @@ import android.os.UserManager
 import com.minilauncher.data.model.AppListError
 import com.minilauncher.data.model.AppModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +25,9 @@ import javax.inject.Singleton
  *
  * Uses LauncherApps API to query apps across all user profiles (personal + work).
  * Falls back to PackageManager if LauncherApps is unavailable.
+ *
+ * Caches the app list so Home and Drawer stores share a single query.
+ * All queries run on [Dispatchers.IO] to avoid blocking the main thread.
  *
  * Defensive: all calls are wrapped in try/catch.
  * Never lets one bad package crash the launcher.
@@ -39,19 +48,47 @@ class AppRepository @Inject constructor(
      */
     private val userHandleMap = mutableMapOf<String, UserHandle>()
 
+    /** Cache: shared between Home and Drawer stores to avoid duplicate PM queries. */
+    private val _cachedApps = MutableStateFlow<List<AppModel>?>(null)
+    val cachedApps: StateFlow<List<AppModel>?> = _cachedApps.asStateFlow()
+
+    private val refreshMutex = Mutex()
+
     /**
      * Returns all launchable apps installed on the device, including work profile.
      * Uses LauncherApps API to query across all profiles.
+     * Results are cached — subsequent calls return the cache.
+     * Runs on [Dispatchers.IO] to avoid blocking the main thread.
      */
-    fun getInstalledApps(): Result<List<AppModel>> = try {
-        val apps = queryLaunchableApps()
-        Result.success(apps)
-    } catch (e: android.os.DeadSystemException) {
-        Result.failure(IllegalStateException(AppListError.PackageManagerDead.toString()))
-    } catch (e: SecurityException) {
-        Result.failure(IllegalStateException(AppListError.SecurityDenied.toString()))
-    } catch (e: Exception) {
-        Result.failure(IllegalStateException(AppListError.Unknown(e.message ?: "Unknown error").toString()))
+    suspend fun getInstalledApps(): Result<List<AppModel>> = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        // Return cache if available
+        _cachedApps.value?.let { return@withContext Result.success(it) }
+
+        val result = try {
+            val apps = queryLaunchableApps()
+            Result.success(apps)
+        } catch (e: android.os.DeadSystemException) {
+            Result.failure(IllegalStateException(AppListError.PackageManagerDead.toString()))
+        } catch (e: SecurityException) {
+            Result.failure(IllegalStateException(AppListError.SecurityDenied.toString()))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException(AppListError.Unknown(e.message ?: "Unknown error").toString()))
+        }
+
+        if (result.isSuccess) {
+            _cachedApps.value = result.getOrThrow()
+        }
+
+        result
+    }
+
+    /**
+     * Forces a fresh query, ignoring the cache.
+     * Called when package change events are detected.
+     */
+    suspend fun refreshApps(): Result<List<AppModel>> = refreshMutex.withLock {
+        _cachedApps.value = null
+        getInstalledApps()
     }
 
     /**

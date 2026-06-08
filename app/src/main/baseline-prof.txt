@@ -1,0 +1,62 @@
+# MiniLauncher baseline profile
+# Covers the critical startup path: Activity → Theme → HomeScreen → DrawerScreen
+# Regenerate with Macrobenchmark when adding new screens or major UI changes.
+
+# Launcher Activity startup
+com.minilauncher.LauncherActivity
+com.minilauncher.LauncherActivity.onCreate
+
+# Hilt initialization
+com.minilauncher.LauncherApplication
+com.minilauncher.LauncherApplication.onCreate
+dagger.hilt.android.internal.managers.ComponentSupplier
+
+# Home screen MVI
+com.minilauncher.feature.home.HomeStore
+com.minilauncher.feature.home.HomeReducer
+com.minilauncher.feature.home.HomeRoute
+com.minilauncher.feature.home.HomeScreen
+
+# Drawer MVI
+com.minilauncher.feature.drawer.DrawerStore
+com.minilauncher.feature.drawer.DrawerReducer
+com.minilauncher.feature.drawer.DrawerRoute
+com.minilauncher.feature.drawer.DrawerScreen
+
+# Settings MVI
+com.minilauncher.feature.settings.SettingsStore
+com.minilauncher.feature.settings.SettingsReducer
+com.minilauncher.feature.settings.SettingsRoute
+com.minilauncher.feature.settings.SettingsScreen
+
+# Data layer
+com.minilauncher.data.repository.AppRepository
+com.minilauncher.data.datastore.LauncherPrefs
+com.minilauncher.data.model.AppDisplayModel
+com.minilauncher.data.model.AppListError
+com.minilauncher.data.model.UiText
+
+# UI components
+com.minilauncher.ui.component.SearchInput
+com.minilauncher.ui.component.AppNameItem
+com.minilauncher.ui.theme.MiniLauncherTheme
+
+# Compose runtime hot paths
+androidx.compose.runtime.Composer
+androidx.compose.runtime.Recomposer
+androidx.compose.runtime.snapshots.SnapshotState
+androidx.compose.ui.layout.LayoutNode
+androidx.compose.foundation.lazy.LazyList
+androidx.compose.foundation.lazy.LazyListItemProvider
+androidx.compose.animation.AnimatedVisibility
+androidx.compose.animation.EnterExitTransition
+
+# DataStore
+androidx.datastore.preferences.PreferencesProto
+androidx.datastore.core.DataStore
+
+# Kotlin coroutines
+kotlinx.coroutines.flow.StateFlow
+kotlinx.coroutines.flow.SharedFlow
+kotlinx.coroutines.channels.Channel
+kotlinx.coroutines.Dispatchers

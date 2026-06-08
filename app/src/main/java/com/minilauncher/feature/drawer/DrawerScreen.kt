@@ -92,6 +92,7 @@ fun DrawerScreen(
 
                         val startX = downChange.position.x
                         val startY = downChange.position.y
+                        val startHeight = size.height
                         val pointerId = downChange.id
                         var endX = startX
                         var endY = startY
@@ -117,7 +118,7 @@ fun DrawerScreen(
 
                         val isSwipeUpFromBottom = (startY - endY) > thresholdPx &&
                             (startY - endY) > horizontalDisplacement &&
-                            startY > size.height - bottomEdgeThresholdPx
+                            startY > startHeight - bottomEdgeThresholdPx
 
                         if (isSwipeDown || isSwipeUpFromBottom) {
                             currentOnBack()

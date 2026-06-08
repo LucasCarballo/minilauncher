@@ -15,8 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
@@ -38,6 +39,7 @@ class HomeStore @Inject constructor(
         observeUserName()
         observePinnedApps()
         observeTimeFormat()
+        observeRecentApps()
     }
 
     fun send(intent: HomeIntent) {
@@ -56,6 +58,9 @@ class HomeStore @Inject constructor(
                         intent.app.isWorkProfile,
                     )
                 )
+                viewModelScope.launch {
+                    launcherPrefs.recordAppLaunch(intent.app.packageName)
+                }
             }
             is HomeIntent.AppInfoClicked -> {
                 _effects.trySend(HomeEffect.ShowAppInfo(intent.packageName))
@@ -144,8 +149,18 @@ class HomeStore @Inject constructor(
         }
     }
 
+    private fun observeRecentApps() {
+        viewModelScope.launch {
+            launcherPrefs.recentAppTimestamps.collect { timestamps ->
+                send(HomeIntent.RecentAppsUpdated(timestamps))
+            }
+        }
+    }
+
     private fun getGreeting(timestamp: Long): String {
-        val hour = SimpleDateFormat("HH", Locale.getDefault()).format(Date(timestamp)).toInt()
+        val hour = Instant.ofEpochMilli(timestamp)
+            .atZone(ZoneId.systemDefault())
+            .hour
         return when (hour) {
             in 5..11 -> "Good morning"
             in 12..17 -> "Good afternoon"
@@ -154,12 +169,18 @@ class HomeStore @Inject constructor(
     }
 
     private fun formatDate(timestamp: Long): String {
-        return SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(timestamp))
+        val date = Instant.ofEpochMilli(timestamp)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+        return date.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
     }
 
     private fun formatTime(timestamp: Long, timeFormat: String): String {
+        val time = Instant.ofEpochMilli(timestamp)
+            .atZone(ZoneId.systemDefault())
+            .toLocalTime()
         val pattern = if (timeFormat == "12h") "h:mm a" else "HH:mm"
-        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timestamp))
+        return time.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault()))
     }
 
     private fun AppModel.toDisplayModel() = AppDisplayModel(
