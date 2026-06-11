@@ -9,14 +9,17 @@ import com.minilauncher.data.model.AppModel
 import com.minilauncher.data.repository.AppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class DrawerStore @Inject constructor(
     private val appRepository: AppRepository,
@@ -29,15 +32,51 @@ class DrawerStore @Inject constructor(
     private val _effects = Channel<DrawerEffect>(Channel.BUFFERED)
     val effects = _effects.receiveAsFlow()
 
+    /** Conflated channel: only the latest query matters, drop stale keystrokes. */
+    private val queryChannel = Channel<String>(Channel.CONFLATED)
+
     init {
         loadApps()
         observePinnedApps()
+        observeQueryChanges()
     }
 
     fun send(intent: DrawerIntent) {
-        val newState = DrawerReducer(_state.value, intent)
-        _state.value = newState
-        handleSideEffects(intent)
+        when (intent) {
+            is DrawerIntent.QueryChanged -> {
+                // Update query text immediately for responsive typing
+                _state.value = DrawerReducer(_state.value, intent)
+                if (intent.query.isBlank()) {
+                    // Clear filter immediately — no debounce needed
+                    _state.value = DrawerReducer(_state.value, DrawerIntent.QueryFiltered(""))
+                } else {
+                    // Debounce the expensive filtering
+                    queryChannel.trySend(intent.query)
+                }
+            }
+            else -> {
+                val newState = DrawerReducer(_state.value, intent)
+                _state.value = newState
+                handleSideEffects(intent)
+            }
+        }
+    }
+
+    private fun observeQueryChanges() {
+        viewModelScope.launch {
+            queryChannel.receiveAsFlow()
+                .debounce(QUERY_DEBOUNCE_MS)
+                .collect { debouncedQuery ->
+                    // Skip stale debounced filters — the query may have been cleared
+                    // (e.g., user clicked an app) since this filter was scheduled
+                    if (_state.value.query == debouncedQuery) {
+                        _state.value = DrawerReducer(
+                            _state.value,
+                            DrawerIntent.QueryFiltered(debouncedQuery),
+                        )
+                    }
+                }
+        }
     }
 
     private fun handleSideEffects(intent: DrawerIntent) {
@@ -50,6 +89,9 @@ class DrawerStore @Inject constructor(
                         intent.app.isWorkProfile,
                     )
                 )
+                viewModelScope.launch {
+                    launcherPrefs.recordAppLaunch(intent.app.packageName)
+                }
             }
             is DrawerIntent.AppInfoClicked -> {
                 _effects.trySend(DrawerEffect.ShowAppInfo(intent.packageName))
@@ -105,4 +147,8 @@ class DrawerStore @Inject constructor(
         activityName = activityName,
         isWorkProfile = isWorkProfile,
     )
+
+    companion object {
+        private const val QUERY_DEBOUNCE_MS = 150L
+    }
 }

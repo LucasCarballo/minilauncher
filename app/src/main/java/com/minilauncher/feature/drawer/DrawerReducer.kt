@@ -11,9 +11,11 @@ object DrawerReducer {
 
     operator fun invoke(state: DrawerUiState, intent: DrawerIntent): DrawerUiState =
         when (intent) {
-            is DrawerIntent.QueryChanged -> {
+            is DrawerIntent.QueryChanged -> state.copy(query = intent.query)
+
+            is DrawerIntent.QueryFiltered -> {
                 val filtered = filterApps(state.allApps, intent.query)
-                state.copy(query = intent.query, filteredApps = filtered)
+                state.copy(filteredApps = filtered)
             }
 
             is DrawerIntent.AppsLoaded -> {

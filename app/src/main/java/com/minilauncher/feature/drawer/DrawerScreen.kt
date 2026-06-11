@@ -165,6 +165,18 @@ fun DrawerScreen(
             state.error != null -> {
                 DrawerErrorState(state.error, onIntent)
             }
+            state.filteredApps.isEmpty() && state.query.isNotBlank() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No apps found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                    )
+                }
+            }
             else -> {
                 AppList(
                     apps = state.filteredApps,

@@ -20,6 +20,7 @@ data class DrawerUiState(
 
 sealed interface DrawerIntent {
     data class QueryChanged(val query: String) : DrawerIntent
+    data class QueryFiltered(val query: String) : DrawerIntent
     data class AppsLoaded(val apps: ImmutableList<AppDisplayModel>) : DrawerIntent
     data class AppsLoadFailed(val error: AppListError) : DrawerIntent
     data class AppClicked(val app: AppDisplayModel) : DrawerIntent
