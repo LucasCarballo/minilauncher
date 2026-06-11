@@ -13,6 +13,7 @@ import androidx.lifecycle.flowWithLifecycle
 @Composable
 fun SettingsRoute(
     onBack: () -> Unit,
+    onOpenCrashLogs: () -> Unit,
     viewModel: SettingsStore = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -34,5 +35,6 @@ fun SettingsRoute(
         state = state,
         onIntent = viewModel::send,
         onSwipeDown = onBack,
+        onOpenCrashLogs = onOpenCrashLogs,
     )
 }

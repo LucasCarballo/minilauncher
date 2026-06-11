@@ -46,6 +46,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onIntent: (SettingsIntent) -> Unit,
     onSwipeDown: () -> Unit,
+    onOpenCrashLogs: () -> Unit,
 ) {
     val currentOnSwipeDown by rememberUpdatedState(onSwipeDown)
     val thresholdPx = with(LocalDensity.current) { SwipeDownThreshold.toPx() }
@@ -201,6 +202,15 @@ fun SettingsScreen(
             text = "A minimal Android launcher",
             style = MaterialTheme.typography.labelSmall,
             color = TextTertiary,
+        )
+
+        Spacer(modifier = Modifier.height(Spacing.lg))
+
+        // Debug section
+        SettingsSectionLabel("Debug")
+        SettingsRow(
+            label = "Crash logs",
+            onClick = onOpenCrashLogs,
         )
 
         // Bottom hint

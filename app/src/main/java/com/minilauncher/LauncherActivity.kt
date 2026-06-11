@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
+import com.minilauncher.feature.crashlog.CrashLogRoute
 import com.minilauncher.feature.drawer.DrawerRoute
 import com.minilauncher.feature.home.HomeRoute
 import com.minilauncher.feature.settings.SettingsRoute
@@ -32,6 +33,7 @@ sealed interface Screen {
     data object Home : Screen
     data object Drawer : Screen
     data object Settings : Screen
+    data object CrashLog : Screen
 }
 
 @AndroidEntryPoint
@@ -87,6 +89,18 @@ class LauncherActivity : ComponentActivity() {
                     ) {
                         SettingsRoute(
                             onBack = { currentScreen.value = Screen.Home },
+                            onOpenCrashLogs = { currentScreen.value = Screen.CrashLog },
+                        )
+                    }
+
+                    // Crash log viewer slides up from bottom
+                    AnimatedVisibility(
+                        visible = screen == Screen.CrashLog,
+                        enter = slideInVertically { it },
+                        exit = slideOutVertically { it },
+                    ) {
+                        CrashLogRoute(
+                            onBack = { currentScreen.value = Screen.Settings },
                         )
                     }
                 }
